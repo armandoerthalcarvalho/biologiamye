@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Biologia Premium - Diagnóstico e Evolução</title>
+    <!-- Chart.js para as métricas avançadas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-main: #060b11;
+            --bg-card: #0e1726;
+            --bg-selected: #172337;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-primary: #10b981; /* Soft green for Biology */
+            --accent-hover: #059669;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --border: #1e293b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-title h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #a7f3d0, #10b981);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .timer-container {
+            background: #111827;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            color: var(--warning);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .main-container {
+            max-width: 1440px;
+            width: 100%;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 2rem;
+            flex-grow: 1;
+        }
+
+        /* Sidebar Navigation Grid */
+        .sidebar {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-mini {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(16, 185, 129, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .grid-item {
+            background-color: #111827;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 0.5rem;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .grid-item:hover {
+            border-color: var(--accent-primary);
+            background-color: var(--bg-selected);
+        }
+
+        .grid-item.active {
+            border-color: var(--accent-primary);
+            background-color: var(--accent-primary);
+            color: #060b11;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .grid-item.correct {
+            background-color: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            color: #34d399;
+        }
+
+        .grid-item.wrong {
+            background-color: rgba(239, 68, 68, 0.2);
+            border-color: var(--danger);
+            color: #f87171;
+        }
+
+        /* Main Quiz Card Area */
+        .quiz-area {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .quiz-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .topic-badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.15);
+            color: #a7f3d0;
+            padding: 0.35rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1.25rem;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .question-text {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+
+        .cladogram-block {
+            font-family: 'JetBrains Mono', monospace;
+            background: #090f1a;
+            padding: 1.25rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            color: #34d399;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin-bottom: 1.5rem;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .option-button {
+            background-color: #0f1a2e;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem 1.5rem;
+            text-align: left;
+            color: var(--text-main);
+            font-size: 0.975rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .option-button:hover:not(.disabled) {
+            background-color: var(--bg-selected);
+            border-color: var(--accent-primary);
+            transform: translateX(4px);
+        }
+
+        .option-letter {
+            background: #1e293b;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .option-button.selected {
+            border-color: var(--accent-primary);
+            background-color: rgba(16, 185, 129, 0.1);
+        }
+
+        .option-button.selected .option-letter {
+            background: var(--accent-primary);
+            color: #060b11;
+        }
+
+        .option-button.correct-ans {
+            background-color: rgba(16, 185, 129, 0.15) !important;
+            border-color: var(--success) !important;
+        }
+        .option-button.correct-ans .option-letter {
+            background: var(--success) !important;
+            color: white !important;
+        }
+
+        .option-button.wrong-ans {
+            background-color: rgba(239, 68, 68, 0.15) !important;
+            border-color: var(--danger) !important;
+        }
+        .option-button.wrong-ans .option-letter {
+            background: var(--danger) !important;
+            color: white !important;
+        }
+
+        .explanation-box {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: #0b111e;
+            border-left: 4px solid var(--accent-primary);
+            border-radius: 0 0.75rem 0.75rem 0;
+            display: none;
+            animation: fadeIn 0.4s ease forwards;
+        }
+
+        .explanation-box h4 {
+            color: #a7f3d0;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .explanation-box p {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Navigation Buttons */
+        .nav-controls {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            background-color: var(--accent-primary);
+            color: #060b11;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+            color: white;
+        }
+
+        .btn:disabled {
+            background-color: var(--border);
+            color: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--bg-selected);
+        }
+
+        /* Advanced Metrics Dashboard View */
+        .dashboard-view {
+            display: none;
+            grid-column: 1 / -1;
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .metric-val {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+            color: white;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                position: relative;
+                top: 0;
+            }
+        }
+
+        .chart-box {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+        }
+
+        .chart-box h3 {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .topic-breakdown-list {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .topic-row {
+            background: #0f172a;
+            padding: 1rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+
+        .topic-row-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .progress-bar-bg {
+            background: var(--bg-main);
+            height: 8px;
+            border-radius: 4px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            width: 0%;
+            transition: width 1s ease-in-out;
+        }
+
+        .feedback-banner {
+            background: linear-gradient(135deg, #064e3b, #047857);
+            border: 1px solid #10b981;
+            padding: 2rem;
+            border-radius: 1rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .feedback-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #ecfdf5;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1>Simulado de Biologia Evolutiva e Ecologia Aplicada</h1>
+            <p>Análise Diagnóstica: Ecologia Urbana, Teorias Evolutivas, Especiação, Adaptação e Filogenia</p>
+        </div>
+        <div class="timer-container" id="timer">
+            ⏱️ <span id="time-display">00:00</span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- Sidebar Navigation -->
+        <div class="sidebar" id="sidebar-nav">
+            <div class="sidebar-title">
+                <span>Grade de Questões</span>
+                <span class="progress-mini" id="progress-text">0 / 30</span>
+            </div>
+            <div class="question-grid" id="q-grid">
+                <!-- Generated dynamically -->
+            </div>
+            <button class="btn btn-secondary" style="width: 100%;" id="btn-finish-quiz" onclick="showResultsDashboard()">Finalizar e Ver Painel</button>
+        </div>
+
+        <!-- Quiz Area -->
+        <div class="quiz-area" id="quiz-screen">
+            <div class="quiz-card">
+                <div id="topic-badge" class="topic-badge">Carregando...</div>
+                <div id="question-container">
+                    <p class="question-text" id="q-text">Carregando questão...</p>
+                    <div id="cladogram-area"></div>
+                    <div class="options-container" id="options-box">
+                        <!-- Options generated dynamically -->
+                    </div>
+                </div>
+                
+                <div class="explanation-box" id="explanation-box">
+                    <h4>💡 Resolução Comentada</h4>
+                    <p id="explanation-text"></p>
+                </div>
+            </div>
+
+            <div class="nav-controls">
+                <button class="btn btn-secondary" id="btn-prev" onclick="prevQuestion()">⬅️ Anterior</button>
+                <button class="btn" id="btn-next" onclick="nextQuestion()">Próxima ➡️</button>
+            </div>
+        </div>
+
+        <!-- Advanced Dashboard View (Initially Hidden) -->
+        <div class="dashboard-view" id="dashboard-screen">
+            <div class="feedback-banner">
+                <div class="feedback-title" id="feedback-title">Diagnóstico de Biologia Concluído!</div>
+                <p id="feedback-desc" style="color: #d1fae5;">Confira o mapeamento vetorial do seu raciocínio biológico e proficiência evolutiva.</p>
+            </div>
+
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Aproveitamento Global</div>
+                    <div class="metric-val" id="metric-accuracy" style="color: var(--success);">0%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Pontuação Estimada</div>
+                    <div class="metric-val" id="metric-score" style="color: var(--accent-primary);">0 / 1000</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Tempo de Prova</div>
+                    <div class="metric-val" id="metric-time" style="color: var(--warning);">00:00</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Status de Retenção</div>
+                    <div class="metric-val" id="metric-status" style="font-size: 1.3rem; margin-top: 1.2rem; color: #fff;">Processando...</div>
+                </div>
+            </div>
+
+            <div class="charts-container">
+                <div class="chart-box" style="display: flex; flex-direction: column; align-items: center;">
+                    <h3>Radar de Competências Biológicas</h3>
+                    <div style="width: 100%; max-width: 400px; height: 320px;">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-box">
+                    <h3>Desempenho Estruturado por Tópico</h3>
+                    <div class="topic-breakdown-list" id="topic-breakdown-container">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button class="btn" onclick="window.location.reload()">🔄 Reiniciar Simulado</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 30 RIGOROUS BIOLOGY QUESTIONS DISTRIBUTED ACROSS 5 MACRO-TOPICS (6 QUESTIONS EACH)
+        const questions = [
+            // TOPIC 1: Ecologia Humana e Sustentabilidade (1-6)
+            {
+                id: 1,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "O descarte inadequado de efluentes industriais contendo compostos organoclorados (como o antigo inseticida DDT) ou metais pesados (como o metilmercúrio) gera sérias perturbações nas cadeias alimentares. Qual é a diferença dinâmica entre os processos de <b>bioacumulação</b> e <b>biomagnificação trófica</b> nesses ecossistemas?",
+                options: [
+                    "A bioacumulação refere-se à retenção do poluente ao longo dos níveis tróficos, enquanto a biomagnificação ocorre estritamente dentro do organismo de um único indivíduo ao longo de sua vida.",
+                    "A bioacumulação é o aumento da concentração do composto xenobiótico no tecido de um organismo individual ao longo do tempo, em uma taxa maior do que a de sua excreção. A biomagnificação é o aumento progressivo dessa concentração ao longo dos níveis tróficos da teia alimentar.",
+                    "A bioacumulação ocorre apenas em produtores (fitoplâncton), enquanto a biomagnificação é um fenômeno exclusivo de consumidores terciários e predadores de topo.",
+                    "A bioacumulação envolve substâncias hidrossolúveis que se dissolvem no citoplasma, enquanto a biomagnificação envolve gases voláteis que se espalham pela atmosfera."
+                ],
+                correct: 1,
+                explanation: "A bioacumulação ocorre no nível do indivíduo (absorção e retenção mais rápidas que a eliminação). A biomagnificação (ou magnificação trófica) é um processo ecológico onde a concentração do poluente lipossolúvel e não biodegradável aumenta a cada nível trófico superior, penalizando os predadores de topo."
+            },
+            {
+                id: 2,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "O Sistema Nacional de Unidades de Conservação (SNUC - Lei Federal nº 9.985/2000) divide as áreas protegidas do Brasil em dois grandes grupos: Unidades de Proteção Integral e Unidades de Uso Sustentável. Qual das seguintes alternativas diferencia corretamente o regime jurídico e o manejo dessas categorias?",
+                options: [
+                    "As Unidades de Proteção Integral admitem a coleta e exploração comercial de recursos naturais, desde que fiscalizadas por órgãos ambientais.",
+                    "As Unidades de Uso Sustentável proíbem qualquer tipo de habitação humana permanente, visando à intocabilidade absoluta da biodiversidade.",
+                    "As Unidades de Proteção Integral têm por objetivo preservar a natureza, sendo admitido apenas o uso indireto dos seus recursos naturais (como pesquisa científica e ecoturismo). Já as de Uso Sustentável visam compatibilizar a conservação da natureza com o uso direto e sustentável de parcela dos seus recursos.",
+                    "As Estações Ecológicas e as Reservas Extrativistas (RESEX) pertencem ao grupo de Proteção Integral, pois ambas proíbem a exploração mineral de superfície."
+                ],
+                correct: 2,
+                explanation: "Unidades de Proteção Integral (ex: Parques Nacionais, Estações Ecológicas) proíbem o consumo ou extração de recursos (uso direto), permitindo apenas uso indireto. Unidades de Uso Sustentável (ex: APA, RESEX) buscam o equilíbrio entre conservação e exploração sustentada de recursos."
+            },
+            {
+                id: 3,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "Para mitigar o efeito das 'ilhas de calor' urbanas e gerenciar o escoamento macro de águas pluviais, grandes metrópoles têm incentivado a implementação de coberturas vegetadas ('telhados verdes') em edificações e calçamentos permeáveis. Essa medida representa:",
+                options: [
+                    "Uma ação puramente individual de apelo estético, sem repercussão microclimática ou ecológica mensurável.",
+                    "Uma ação de sustentabilidade urbana que atua no aumento do albedo urbano, na redução da amplitude térmica por evapotranspiração e na diminuição do risco de enchentes por amortecimento de picos de vazão pluvial.",
+                    "Uma alternativa tecnológica que substitui completamente a necessidade de tratamento de esgoto sanitário e saneamento básico estrutural.",
+                    "Uma intervenção que eleva a taxa de inversão térmica diurna e piora os índices locais de poluição atmosférica por pólen."
+                ],
+                correct: 1,
+                explanation: "Os telhados verdes aumentam a evapotranspiração, ajudam a quebrar as ilhas de calor e retêm parte da água da chuva, retardando o escoamento superficial para as galerias pluviais, o que previne inundações nas cidades."
+            },
+            {
+                id: 4,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "Em uma lagoa impactada por efluentes industriais com mercúrio elemental, coletou-se amostras de água, fitoplâncton, peixes herbívoros e peixes piscívoros (carnívoros). Ao quantificar a concentração de mercúrio por unidade de biomassa nesses componentes, espera-se encontrar o maior teor do metal pesado em qual fração?",
+                options: [
+                    "Na água, pois é o meio solvente original onde o poluente foi despejado em maior volume bruto.",
+                    "No fitoplâncton, por possuir a maior taxa de captação inicial e maior superfície de contato metabólico direto.",
+                    "Nos peixes herbívoros, por consumirem grandes volumes de biomassa vegetal primária.",
+                    "Nos peixes piscívoros, visto que o mercúrio é acumulado ao longo da cadeia alimentar, concentrando-se no topo da pirâmide trófica."
+                ],
+                correct: 3,
+                explanation: "Devido ao fenômeno da biomagnificação trófica, as substâncias persistentes e lipossolúveis acumulam-se progressivamente ao longo da cadeia. Como os peixes piscívoros ocupam o nível trófico mais alto nesta cadeia (consumidores secundários/terciários), eles concentram a maior carga do contaminante por unidade de massa."
+            },
+            {
+                id: 5,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "As Reservas Extrativistas (RESEX) representam um marco conceitual na conservação ambiental brasileira por unirem as esferas ecológica e social. A relevância estratégica dessa categoria de Unidade de Conservação reside no fato de:",
+                options: [
+                    "Garantir a posse de terras públicas para a exploração agroindustrial de monoculturas transgênicas em larga escala.",
+                    "Proteger os modos de vida e a cultura de populações tradicionais (como ribeirinhos e seringueiros), cuja subsistência baseia-se no extrativismo sustentável, transformando-os em agentes codivisores da conservação da biodiversidade local.",
+                    "Permitir a instalação de polos petroquímicos pesados para subsidiar o desenvolvimento industrial das bordas amazônicas.",
+                    "Funcionar como zoológicos abertos destinados à reprodução assistida de megafauna exótica introduzida."
+                ],
+                correct: 1,
+                explanation: "As RESEX são Unidades de Uso Sustentável desenhadas para proteger os direitos territoriais e culturais de populações tradicionais. Ao utilizarem os recursos de forma manejada e ancestral, essas comunidades atuam como barreiras humanas eficientes contra o desmatamento ilegal."
+            },
+            {
+                id: 6,
+                topic: "Ecologia Humana e Sustentabilidade",
+                text: "Considere duas políticas urbanas integradas: I. Implantação de sistemas de Logística Reversa para resíduos eletroeletrônicos; II. Ampliação de ciclovias integradas a eixos ferroviários de transporte de massa. Classifique essas medidas quanto ao seu impacto ambiental direto e escopo de ação:",
+                options: [
+                    "I reduz a contaminação do solo por metais pesados e fomenta a economia circular; II atua na redução das emissões de gases de efeito estufa e na melhoria da mobilidade urbana sustentável.",
+                    "I visa apenas o embelezamento urbano; II aumenta a poluição sonora devido ao tráfego concentrado de bicicletas.",
+                    "Ambas são iniciativas puramente individuais que dependem exclusivamente de incentivos governamentais diretos em dinheiro.",
+                    "I incentiva o consumismo desenfreado de eletrônicos; II prejudica o comércio local ao restringir o estacionamento de veículos automotores particulares."
+                ],
+                correct: 0,
+                explanation: "A logística reversa recolhe e recicla componentes perigosos de eletrônicos, evitando que contaminem solos e lençóis freáticos. A mobilidade por bicicletas integrada ao transporte coletivo remove veículos individuais movidos a combustíveis fósseis das ruas, reduzindo a pegada de carbono da cidade."
+            },
+
+            // TOPIC 2: Teorias Evolutivas (7-12)
+            {
+                id: 7,
+                topic: "Teorias Evolutivas",
+                text: "O surgimento da resistência bacteriana a antibióticos é um problema de saúde pública frequentemente abordado em exames. Como as teorias evolutivas de Jean-Baptiste Lamarck e Charles Darwin explicariam, respectivamente, o fato de uma população de bactérias se tornar resistente após a aplicação contínua de um mesmo antibiótico?",
+                options: [
+                    "Lamarck diria que o antibiótico selecionou as bactérias que já nasceram resistentes; Darwin diria que o antibiótico induziu mutações benéficas no genoma bacteriano.",
+                    "Lamarck diria que a exposição ao antibiótico causou uma necessidade de adaptação, induzindo as bactérias a desenvolverem resistência ativa que foi transmitida às gerações filhas; Darwin diria que o antibiótico atuou como agente seletivo, eliminando as bactérias sensíveis e permitindo a sobrevivência e reprodução das variantes resistentes previamente existentes.",
+                    "Ambos concordariam que as bactérias sofreram mutações cromossômicas direcionadas causadas pela radiação do meio ambiente para se defenderem do fármaco.",
+                    "Lamarck justificaria o fato através do isolamento geográfico; Darwin explicaria através do princípio do equilíbrio de Hardy-Weinberg."
+                ],
+                correct: 1,
+                explanation: "Para Lamarck, o meio induz a mudança (o antibiótico cria a necessidade de adaptação e a bactéria se modifica para sobreviver). Para Darwin, o meio apenas seleciona a variação pré-existente (o antibiótico mata as sensíveis e preserva as resistentes, que se multiplicam)."
+            },
+            {
+                id: 8,
+                topic: "Teorias Evolutivas",
+                text: "Embora Charles Darwin tenha revolucionado a ciência com a publicação de 'A Origem das Espécies' em 1859, sua teoria original possuía uma lacuna conceitual crucial que ele nunca conseguiu preencher de forma plenamente satisfatória. Qual era essa lacuna e como o Neodarwinismo (Teoria Sintética da Evolução) a resolveu em meados do século XX?",
+                options: [
+                    "Darwin não explicava o papel da seleção natural; o Neodarwinismo provou que ela ocorre exclusivamente em ambientes de clima temperado.",
+                    "Darwin não conseguia explicar a origem e os mecanismos de transmissão da variabilidade hereditária; o Neodarwinismo resolveu essa lacuna ao integrar as leis da genética mendeliana, os conceitos de mutação espontânea e a recombinação gênica à seleção natural.",
+                    "Darwin acreditava na imutabilidade das espécies; o Neodarwinismo introduziu a ideia de que os seres vivos sofrem modificações anatômicas graduais ao longo do tempo.",
+                    "Darwin desconsiderava os fósseis; o Neodarwinismo utilizou o decaimento radioativo do Carbono-14 para anular a teoria celular."
+                ],
+                correct: 1,
+                explanation: "Darwin sabia que os indivíduos variavam e que essas variações eram herdadas, mas desconhecia os mecanismos genéticos por trás disso (Mendel era desconhecido por ele). O Neodarwinismo uniu a Seleção Natural de Darwin com a Genética moderna, explicando que a variabilidade surge por mutação e recombinação (meiose/fecundação)."
+            },
+            {
+                id: 9,
+                topic: "Teorias Evolutivas",
+                text: "O conceito darwinista de 'sobrevivência do mais apto' muitas vezes é mal compreendido pelo público geral, sendo confundido com a sobrevivência do indivíduo fisicamente mais forte. No contexto da seleção natural biológica, a aptidão (ou valor adaptativo) de um indivíduo mede-se fundamentalmente através de sua:",
+                options: [
+                    "Força muscular e velocidade de deslocamento linear em ambiente de savana aberta.",
+                    "Capacidade metabólica de resistir a longos períodos de jejum absoluto sem perda de massa encefálica.",
+                    "Eficiência reprodutiva diferencial, isto é, sua capacidade de sobreviver e deixar o maior número de descendentes férteis que também cheguem à idade reprodutiva na geração seguinte.",
+                    "Longevidade celular extrema, independentemente do número de gametas produzidos ao longo da vida."
+                ],
+                correct: 2,
+                explanation: "Aptidão evolutiva (fitness) não se resume à força física, mas sim ao sucesso reprodutivo diferencial. O organismo mais apto é aquele que possui características que maximizam sua probabilidade de sobrevivência até a idade reprodutiva e sucesso na transmissão de seus genes para a próxima geração."
+            },
+            {
+                id: 10,
+                topic: "Teorias Evolutivas",
+                text: "A 'Lei do Uso e Desuso' e a 'Lei da Transmissão dos Caracteres Adquiridos' são os dois pilares conceituais do modelo evolucionista lamarckista. Embora incorretas para a genética clássica estrutural, por que essas ideias diferem filosoficamente do fixismo criacionista vigente na época de Lamarck?",
+                options: [
+                    "Porque propunham que as espécies não eram imutáveis, mas sim dinâmicas e sofriam modificações graduais ao longo do tempo em resposta direta às pressões e estímulos ambientais.",
+                    "Porque defendiam que o DNA sofria alterações químicas programadas no núcleo celular devido a sentimentos internos.",
+                    "Porque estabeleciam que a evolução ocorria exclusivamente por saltos abruptos causados por catástrofes geológicas globais.",
+                    "Porque explicavam o surgimento da vida complexa como um evento único ocorrido nos oceanos primitivos através de geração espontânea de coacervados."
+                ],
+                correct: 0,
+                explanation: "A grande contribuição histórica de Lamarck foi romper com o Fixismo (ideia de que as espécies nasceram prontas e nunca mudavam). Mesmo errando o mecanismo (uso/desuso induzido pelo meio), ele introduziu o Transformismo, a tese de que os seres vivos mudam ao longo do tempo adaptando-se ao meio ambiente."
+            },
+            {
+                id: 11,
+                topic: "Teorias Evolutivas",
+                text: "De acordo com as premissas estruturais do Neodarwinismo, quais são os dois fatores evolutivos primários que atuam, respectivamente, como <b>fonte geradora original</b> de novos alelos em uma população e como <b>fator rearranjador</b> de combinações alélicas pré-existentes?",
+                options: [
+                    "Seleção natural e deriva genética casual.",
+                    "Mutação genética (gênica ou cromossômica) e Recombinação gênica (crossing-over e segregação independente dos cromossomos homólogos na meiose).",
+                    "Isolamento geográfico e convergência fenotípica.",
+                    "Fluxo gênico adaptativo e especiação simpátrica por poliploidia induzida."
+                ],
+                correct: 1,
+                explanation: "A mutação é o único fator evolutivo capaz de criar novos alelos/genes na natureza (fonte geradora primária de novidade). A recombinação gênica (via crossing-over e segregação na meiose + fecundação) rearranja esses alelos gerando novas combinações fenotípicas nas populações sobre as quais a seleção natural atuará."
+            },
+            {
+                id: 12,
+                topic: "Teorias Evolutivas",
+                text: "Recentemente, a Epigenética demonstrou que modificações químicas no padrão de metilação do DNA ou acetilação de histonas podem ser induzidas por estresse ambiental e transmitidas por algumas gerações sem alterar a sequência de bases do genoma. Cientistas alertam que isso NÃO ressuscita o Lamarckismo clássico porque:",
+                options: [
+                    "As alterações epigenéticas alteram a sequência de aminoácidos estruturais, mas não afetam a anatomia externa do indivíduo.",
+                    "Essas marcas epigenéticas são geralmente temporárias, reversíveis ao longo das gerações e não criam novos genes estruturais duradouros como exigiria uma macroevolução adaptativa contínua.",
+                    "A metilação do DNA ocorre apenas em tecidos somáticos, nunca alcançando as linhagens de células germinativas (espermatozoides e óvulos).",
+                    "O código genético bacteriano é imune a mecanismos de acetilação molecular externa."
+                ],
+                correct: 1,
+                explanation: "A herança epigenética mostra que o meio pode afetar o padrão de expressão dos genes temporariamente. Contudo, isso não ressuscita o Lamarckismo porque essas alterações fenotípicas são reversíveis e não modificam a estrutura primária do DNA, sendo eliminadas após algumas gerações na ausência do estímulo."
+            },
+
+            // TOPIC 3: Especiação e Mecanismos Evolutivos (13-18)
+            {
+                id: 13,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "O surgimento de uma cadeia montanhosa ou o desvio do curso de um grande rio divide uma população original de roedores em dois grupos isolados por milhares de anos. Ao longo do tempo, acumulam-se mutações e divergências ecológicas distintas em cada lado. Esse cenário descreve as fases iniciais de qual processo de especiação?",
+                options: [
+                    "Especiação Simpátrica, desencadeada por mutações cromossômicas em uma mesma área de forrageamento.",
+                    "Especiação Alopátrica (ou geográfica), onde o isolamento geográfico interrompe o fluxo gênico, permitindo que a seleção natural e a deriva genética atuem de forma independente até consolidar o isolamento reprodutivo.",
+                    "Especiação Parapátrica, caracterizada pela ausência de barreiras físicas e presença de acasalamento estritamente aleatório na zona de ecótono.",
+                    "Especiação Artificial por seleção direcional antropogênica."
+                ],
+                correct: 1,
+                explanation: "A especiação alopátrica fundamenta-se na existência de uma barreira geográfica física (rio, montanha, cânion). Essa barreira cessa o fluxo de genes entre as populações apartadas. Com o tempo, as forças evolutivas atuam individualmente em cada grupo até que ocorra o isolamento reprodutivo definitivo."
+            },
+            {
+                id: 14,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "Em algumas linhagens de plantas angiospermas, erros na disjunção cromossômica durante a meiose podem gerar gametas diploides (2n). A autofecundação desses gametas produz indivíduos tetraploides (4n) que crescem lado a lado com os parentais diploides (2n), mas não conseguem gerar descendentes férteis com eles. Esse fenômeno é um exemplo clássico de:",
+                options: [
+                    "Especiação Alopátrica por vicariância geográfica crônica.",
+                    "Especiação Simpátrica por poliploidia, ocorrendo a divergência evolutiva e o isolamento reprodutivo sem a necessidade de separação geográfica prévia.",
+                    "Convergência adaptativa induzida por estresse hídrico severo.",
+                    "Irradiação adaptativa decorrente da extinção em massa de polinizadores."
+                ],
+                correct: 1,
+                explanation: "A especiação simpátrica ocorre sem separação geográfica. Em vegetais, um dos mecanismos mais comuns é a poliploidia (multiplicação do número de conjuntos cromossômicos). O indivíduo poliploide (ex: 4n) fica imediatamente isolado reprodutivamente de seus ancestrais (2n) devido a incompatibilidades na meiose dos híbridos triploides resultantes."
+            },
+            {
+                id: 15,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "O isolamento reprodutivo é o critério definitivo para consolidar a especiação no conceito biológico. Considere dois mecanismos: I. Duas espécies de rãs habitam a mesma lagoa, mas uma se reproduz em janeiro e a outra em setembro; II. Um jumento e uma égua acasalam e produzem a mula, que sobrevive de forma robusta, porém é estéril. Classifique esses isolamentos quanto à barreira zigótica:",
+                options: [
+                    "I é um mecanismo pré-zigótico (isolamento temporal); II é um mecanismo pós-zigótico (esterilidade do híbrido).",
+                    "I é um mecanismo pós-zigótico (mortalidade zigótica); II é um mecanismo pré-zigótico (isolamento mecânico).",
+                    "Ambos representam isolamento comportamental ou etológico baseado em feromônios.",
+                    "Ambos representam barreiras geográficas decorrentes da deriva continental."
+                ],
+                correct: 0,
+                explanation: "Mecanismos pré-zigóticos impedem a formação do zigoto (fertilização). O isolamento temporal (I) é um exemplo, pois as épocas de reprodução não coincidem. Mecanismos pós-zigóticos operam após a fecundação; a esterilidade do híbrido (II) permite que o indivíduo nasça e cresça, mas bloqueia sua continuidade genética devido a falhas na sinapse cromossômica da sua própria meiose."
+            },
+            {
+                id: 16,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "O fenômeno do 'Efeito Fundador' ocorre quando um número reduzido de indivíduos coloniza uma nova ilha isolada, transportando apenas uma pequena fração da variabilidade genética da população continental nativa. Geneticamente, qual força evolutiva atua com intensidade amplificada nesse tipo de especiação?",
+                options: [
+                    "A seleção natural estabilizadora, que elimina alelos raros.",
+                    "A deriva genética, que pode fixar ou extinguir alelos de forma puramente casual e aleatória devido ao tamanho reduzido da amostra populacional inicial.",
+                    "O fluxo gênico contínuo, que padroniza as frequências alélicas entre a ilha e o continente.",
+                    "A panmixia perfeita, que força a população a manter o equilíbrio de Hardy-Weinberg de forma indefinida."
+                ],
+                correct: 1,
+                explanation: "Em populações muito pequenas (como no Efeito Fundador ou Gargalo Populacional), as oscilações casuais de frequências alélicas por amostragem — a Deriva Genética — tornam-se avassaladoras. Alelos benéficos podem sumir e alelos deletérios podem se fixar por puro azar, moldando o genoma da nova linhagem independentemente da seleção natural."
+            },
+            {
+                id: 17,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "A especiação parapátrica difere dos modelos alopátrico e simpátrico puros porque ocorre em populações que habitam áreas contínuas com condições ecológicas marcadamente distintas (como um gradiente altitudinal). Nesse modelo, observa-se a formação de:",
+                options: [
+                    "Uma barreira física intransponível que impede totalmente o contato visual dos indivíduos.",
+                    "Uma zona de hibridização ou ecótono estreito, onde indivíduos das duas subpopulações adjacentes se encontram e cruzam, mantendo contudo pressões seletivas divergentes em cada extremo do território.",
+                    "Clones idênticos gerados por partenogênese obrigatória induzida por parasitas celulares.",
+                    "Indivíduos poliploides estéreis incapazes de realizar síntese proteica na fase larval."
+                ],
+                correct: 1,
+                explanation: "Na especiação parapátrica, não há barreira geográfica separando as populações, mas o território é extenso e apresenta um forte gradiente ambiental. As populações das extremidades adaptam-se a nichos diferentes. Ocorre cruzamento na faixa de contato (zona híbrida), mas a seleção desfavorece os híbridos nas áreas extremas, estimulando o isolamento."
+            },
+            {
+                id: 18,
+                topic: "Especiação e Mecanismos Evolutivos",
+                text: "O Conceito Biológico de Espécie proposto por Ernst Mayr define espécie como 'grupos de populações naturais intercruzantes que estão real ou potencialmente isoladas reprodutivamente de outros grupos semelhantes'. Qual das seguintes opções aponta uma limitação metodológica real desse conceito?",
+                options: [
+                    "Ele é perfeitamente aplicável a animais vertebrados, mas falha ao classificar plantas com reprodução sexuada.",
+                    "Ele é inaplicável a organismos fósseis (cuja reprodução não pode ser testada diretamente) e a táxons com reprodução estritamente assexuada (como bactérias e fungos anamorfos).",
+                    "Ele exige obrigatoriamente o sequenciamento completo do genoma mitocondrial de todos os indivíduos do ecossistema.",
+                    "Ele desconsidera as interações ecológicas de predação e parasitismo na definição de nicho funcional."
+                ],
+                correct: 1,
+                explanation: "O conceito biológico fundamenta-se na reprodução sexuada e no isolamento reprodutivo. Portanto, paleontólogos não conseguem aplicá-lo a fósseis (não há como checar isolamento reprodutivo em laboratório), e microbiologistas não o aplicam a bactérias, que se reproduzem assexuadamente por fissão binária e trocam genes por transferência horizontal."
+            },
+
+            // TOPIC 4: Anatomia Comparada e Adaptação (19-24)
+            {
+                id: 19,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "Em anatomia comparada, a distinção entre características homólogas e análogas constitui um dos pilares para a reconstrução da história evolutiva. Estruturalmente, duas características são consideradas <b>homólogas</b> quando:",
+                options: [
+                    "Desempenham obrigatoriamente a mesma função mecânica no ambiente atual, independentemente do parentesco embrionário.",
+                    "Compartilham uma mesma origem embriológica e plano estrutural básico herdados de um ancestral comum, podendo ou não desempenhar funções diferentes na atualidade.",
+                    "Surgiram por mutações idênticas em filos completamente distintos que habitam continentes diferentes.",
+                    "São formadas exclusivamente por tecidos quitinosos sem inervação periférica ativa."
+                ],
+                correct: 1,
+                explanation: "Homologia define-se pela ancestralidade comum evidenciada pela mesma origem de folhetos embrionários e arquitetura anatômica básica. Estruturas homólogas podem sofrer divergência funcional (ex: o braço humano, a asa do morcego e a nadadeira da baleia têm a mesma origem óssea, mas servem para segurar, voar e nadar)."
+            },
+            {
+                id: 20,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "Analise a estrutura da asa de uma borboleta (inseto artrópode) em comparação com a asa de um morcego (mamífero vertebrado). Sob a ótica da evolução biológica, essas duas estruturas corporais são classificadas como:",
+                options: [
+                    "Homólogas, demonstrando que insetos e mamíferos divergiram recentemente de um ancestral voador comum.",
+                    "Análogas, pois desempenham a mesma função adaptativa (vôo) mas possuem origens embriológicas e planos anatômicos completamente distintos, revelando evolução independente sob pressões seletivas semelhantes.",
+                    "Vestigiais, visto que perderam sua função primária nos ecossistemas agrícolas modernos.",
+                    "Sinapomorfias exclusivas do clado dos vertebrados tetrápodes."
+                ],
+                correct: 1,
+                explanation: "As asas de insetos (expansões do exoesqueleto de quitina) e as de morcegos (membros anteriores modificados com ossos e membrana alar) são estruturas análogas. Elas executam a mesma função (voar) devido à adaptação ao mesmo nicho, mas não vieram de um ancestral comum alado (convergência adaptativa)."
+            },
+            {
+                id: 21,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "A <b>irradiação adaptativa</b> (ou divergência evolutiva) é um processo macroevolutivo caracterizado pela rápida diversificação de uma única linhagem ancestral em múltiplas espécies filhas. Para que uma irradiação ocorra com sucesso na natureza, exige-se geralmente:",
+                options: [
+                    "A presença de um ambiente homogêneo com apenas um tipo de recurso alimentar disponível para evitar disputas interespecíficas.",
+                    "A ocorrência de uma barreira geográfica contínua que force a fusão de genomas de diferentes filos.",
+                    "A abertura de múltiplas oportunidades ecológicas (nichos vagos), frequentemente decorrentes da colonização de novos ambientes (como ilhas vulcânicas) ou após extinções em massa que eliminam competidores antigos.",
+                    "A interrupção completa de mutações deletérias em organismos multicelulares complexos."
+                ],
+                correct: 2,
+                explanation: "A irradiação adaptativa acontece quando uma linhagem ancestral encontra uma ampla variedade de nichos ecológicos desocupados (oportunidade ecológica). Exemplos clássicos são os tentilhões de Darwin em Galápagos e a explosão de mamíferos após a extinção dos dinossauros não-avianos."
+            },
+            {
+                id: 22,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "O tubarão (peixe condrictie), o ictiossauro (réptil fóssil) e o golfinho (mamífero cetáceo) pertencem a classes taxonômicas marcadamente distintas, porém compartilham corpos hidrodinâmicos fusiformes e nadadeiras morfologicamente semelhantes. Esse padrão morfológico conjunto é fruto de qual processo evolutivo?",
+                options: [
+                    "Irradiação adaptativa a partir de um ancestral comum dotado de placenta e brânquias.",
+                    "Convergência adaptativa, onde pressões seletivas análogas do ambiente aquático favoreceram a fixação de formas hidrodinâmicas eficientes para a natação em linhagens filogeneticamente distantes.",
+                    "Deriva genética direcional severa causada pela inversão dos polos magnéticos da Terra.",
+                    "Mutação coordenada induzida pela presença de algas vermelhas tóxicas nos oceanos pré-históricos."
+                ],
+                correct: 1,
+                explanation: "Organismos de origens evolutivas distantes que habitam o mesmo tipo de ecossistema enfrentam os mesmos desafios físicos (como o atrito da água ao nadar). A seleção natural atua fixando soluções anatômicas semelhantes (corpo hidrodinâmico), configurando um processo de convergência adaptativa (estruturas análogas)."
+            },
+            {
+                id: 23,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "Estruturas vestigiais, como o apêndice cecal reduzido em humanos ou os ossos pélvicos internos atrofiados em baleias e serpentes jiboias, constituem fortes evidências anatômicas da evolução porque indicam que:",
+                options: [
+                    "Essas espécies estão involuindo e perderão toda a sua complexidade biológica no futuro próximo.",
+                    "O criacionismo previu estruturas de reserva metabólica para períodos de escassez nutritiva global.",
+                    "Esses organismos descendem de ancestrais nos quais tais estruturas eram plenamente desenvolvidas, funcionais e adaptativas, sofrendo atrofia progressiva após a mudança de nicho ou hábitos da linhagem.",
+                    "Tais ossos surgiram por herança direta de linhagens de invertebrados marinhos de corpo mole."
+                ],
+                correct: 2,
+                explanation: "Estruturas vestigiais são remanescentes evolutivos de órgãos que eram funcionais em ancestrais da espécie. Mudanças no nicho ecológico ou na dieta tornaram o órgão dispensável; mutações que atrofiam estruturas energeticamente caras passam a ser selecionadas positiva ou neutramente, deixando o órgão vestigial."
+            },
+            {
+                id: 24,
+                topic: "Anatomia Comparada e Adaptação",
+                text: "A biologia do desenvolvimento molecular revelou que os genes responsáveis pela arquitetura corporal geral de animais — os chamados complexos de genes homeóticos ou <b>Genes Hox</b> — são extremamente semelhantes em sequências de bases desde moscas drosófilas até seres humanos. Essa incrível conservação molecular aponta para:",
+                options: [
+                    "Um caso agudo de analogia funcional sem nexo histórico evolutivo.",
+                    "Uma evidência profunda de homologia genética e molecular, reforçando a tese de que todos os animais multicelulares compartilham uma origem evolutiva comum profundamente integrada.",
+                    "A comprovação definitiva da abiogênese celular macroscópica em ambientes controlados.",
+                    "Um processo de isolamento reprodutivo pós-zigótico por quebra cromossômica induzida."
+                ],
+                correct: 1,
+                explanation: "Os Genes Hox comandam o plano de eixos e segmentação do corpo no desenvolvimento embrionário de praticamente todos os animais. A conservação extrema dessas sequências genéticas é uma das maiores evidências moleculares de homologia profunda: uma caixa de ferramentas de desenvolvimento herdada de um ancestral comum remoto de todos os metazoários."
+            },
+
+            // TOPIC 5: Sistemática Filogenética (25-30)
+            {
+                id: 25,
+                topic: "Sistemática Filogenética",
+                text: "Nas representações de árvores filogenéticas (cladogramas), as ramificações e bifurcações possuem significados estruturais estritos. Ao analisar um ponto de ramificação, popularmente denominado como um <b>nó</b> da árvore, o estudante deve interpretá-lo conceitualmente como:",
+                options: [
+                    "O momento exato em que a espécie sofreu uma mutação gênica deletéria induzida por fatores climáticos.",
+                    "O ponto que representa um evento de cladogênese (especiação), indicando a existência de um ancestral comum hipotético que divergiu em duas ou mais linhagens filhas distintas.",
+                    "A extinção terminal definitiva de uma linhagem que não deixou descendentes contemporâneos.",
+                    "O período de tempo onde o fluxo gênico atingiu sua taxa máxima absoluta de homogeneização populacional."
+                ],
+                correct: 1,
+                explanation: "Os nós em um cladograma marcam eventos de cladogênese — a divisão de uma linhagem ancestral em linhagens independentes. O nó representa o ancestral comum exclusivo compartilhado por todos os ramos que dele derivam."
+            },
+            {
+                id: 26,
+                topic: "Sistemática Filogenética",
+                text: "Na classificação filogenética moderna, busca-se erigir táxons que reflitam fielmente a história evolutiva, aceitando-se apenas grupos monofiléticos. Um agrupamento taxonômico é classificado estruturalmente como <b>monofilético</b> quando inclui:",
+                options: [
+                    "Organismos que exibem características análogas de convergência sem ancestrais partilhados na história da classe.",
+                    "Um ancestral comum recente e apenas parte de seus descendentes, excluindo intencionalmente uma ou mais linhagens filhas.",
+                    "Um ancestral comum hipotético e TODOS os descendentes evolucionários que divergiram a partir dele (formando um clado completo).",
+                    "Múltiplas linhagens terminais com diferentes ancestrais sem nenhuma raiz de conectividade histórica direta."
+                ],
+                correct: 2,
+                explanation: "Um grupo monofilético (ou clado) é uma unidade evolutiva real: engloba o ancestral comum e TODOS os seus descendentes. Grupos parafiléticos deixam descendentes de fora (ex: 'Répteis' tradicionais excluindo as Aves), e grupos polifiléticos unem ramos sem incluir o ancestral comum recente de todos (ex: 'Homeotermos', reunindo aves e mamíferos)."
+            },
+            {
+                id: 27,
+                topic: "Sistemática Filogenética",
+                text: "Considere a análise de novidades evolutivas em cladogramas. Características anatômicas modificadas que surgiram na linhagem do ancestral comum mais recente do grupo e que são compartilhadas de forma exclusiva pelos membros desse clado são denominadas:",
+                options: [
+                    "Plesiomorfias ou caracteres ancestrais primitivos inalterados.",
+                    "Sinapomorfias (caracteres derivados compartilhados), que servem de base para agrupar e diagnosticar os nós monofiléticos das árvores.",
+                    "Anomalias genéticas autossômicas recessivas sem valor filogenético.",
+                    "Homoplasias decorrentes de reversão evolutiva por mutação estocástica."
+                ],
+                correct: 1,
+                explanation: "Sinapomorfias são novidades evolutivas compartilhadas por um grupo de organismos e pelo seu ancestral comum exclusivo. Elas indicam parentesco e definem os clados (ex: pelos e glândulas mamárias são sinapomorfias que definem a classe dos Mamíferos)."
+            },
+            {
+                id: 28,
+                topic: "Sistemática Filogenética",
+                text: "Analise a topologia linear da seguinte árvore filogenética representada em formato textual estruturado de parentesco:<br><b>((Peixe, (Anfíbio, (Réptil, Ave))), Mamífero)</b>.<br>Se descobrirmos que os Mamíferos divergiram na raiz da árvore antes da separação de anfíbios, répteis e aves, qual das seguintes conclusões sobre parentesco evolutivo está correta de acordo com as regras de cladística?",
+                options: [
+                    "As Aves são filogeneticamente mais próximas dos Peixes do que dos Répteis.",
+                    "Os Répteis e as Aves compartilham um ancestral comum mais recente entre si do que com os Mamíferos.",
+                    "Os Anfíbios evoluíram diretamente a partir de mutações de cruzamento com os Mamíferos terrestres.",
+                    "A árvore demonstra que a evolução seguiu uma linha reta perfeita e progressiva em direção à perfeição biológica."
+                ],
+                correct: 1,
+                explanation: "A topologia de agrupamento mostra que Réptil e Ave estão aninhados em um ramo comum terminal interno, o que significa que compartilham um ancestral comum exclusivo mais recente entre si do que em relação aos grupos mais externos (Anfíbios, Peixes e Mamíferos)."
+            },
+            {
+                id: 29,
+                topic: "Sistemática Filogenética",
+                text: "Na análise cladística de árvores filogenéticas, o conceito de <b>Grupo-Irmão</b> (Sister Group) é crucial para entender o arranjo de parentesco. Duas linhagens ou clados são considerados grupos-irmãos quando:",
+                options: [
+                    "Surgiram em épocas históricas diferentes e não dividem nenhum ancestral anatômico comum detectável.",
+                    "Divergiram a partir de um mesmo nó dicotômico exclusivo, compartilhando, portanto, um ancestral comum imediato que não é compartilhado por nenhuma outra linhagem da árvore.",
+                    "Possuem o mesmo número total de espécies vivas e a mesma taxa de mutação mitocondrial.",
+                    "Apresentam exclusivamente hábitos endoparasitas intracelulares obrigatórios em plantas."
+                ],
+                correct: 1,
+                explanation: "Grupos-irmãos são as linhagens mais proximamente aparentadas em uma árvore filogenética. Eles derivam do mesmo nó anatômico imediato, o que significa que compartilham um ancestral comum exclusivo e têm exatamente a mesma idade geológica de divergência."
+            },
+            {
+                id: 30,
+                topic: "Sistemática Filogenética",
+                text: "Ao construir ou testar hipóteses filogenéticas concorrentes com base em dados morfológicos ou moleculares, os sistematas aplicam rotineiramente o <b>Princípio da Parcimônia</b> (Navalha de Occam). Essa diretriz metodológica determina que:",
+                options: [
+                    "A árvore filogenética mais provável e robusta é aquela que exige o maior número possível de mutações paralelas e reversões independentes para explicar os dados.",
+                    "A hipótese filogenética mais aceitável deve ser a mais simples, ou seja, aquela que minimiza o número total de passos evolutivos (surgimento ou perda de características), reduzindo a necessidade de postular eventos de homoplasia independentes.",
+                    "Devem ser aceitos apenas cladogramas gerados por simulação de cruzamento genético em laboratórios industriais.",
+                    "As características análogas devem ter peso duplicado em relação às sinapomorfias verdadeiras na montagem das matrizes de dados."
+                ],
+                correct: 1,
+                explanation: "O Princípio da Parcimônia prega que a explicação mais simples para um fenômeno natural tende a ser a correta. Em filogenia, a árvore mais parcimoniosa é aquela que assume o menor número de transformações evolutivas (mudanças de estado de caracteres) para explicar a distribuição das características observadas nas espécies."
+            }
+        ];
+
+        let currentQuestionIdx = 0;
+        let userAnswers = new Array(questions.length).fill(null);
+        let timeElapsed = 0;
+        let timerInterval = null;
+
+        // Structured macro-topics mapping for 30 questions (6 questions per slice)
+        const topicMetrics = {
+            "Ecologia Humana e Sustentabilidade": { total: 6, correct: 0 },
+            "Teorias Evolutivas": { total: 6, correct: 0 },
+            "Especiação e Mecanismos": { total: 6, correct: 0 },
+            "Anatomia Comparada e Adaptação": { total: 6, correct: 0 },
+            "Sistemática Filogenética": { total: 6, correct: 0 }
+        };
+
+        function initQuiz() {
+            renderQuestionGrid();
+            loadQuestion(0);
+            startTimer();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                const mins = String(Math.floor(timeElapsed / 60)).padStart(2, '0');
+                const secs = String(timeElapsed % 60).padStart(2, '0');
+                document.getElementById('time-display').innerText = `${mins}:${secs}`;
+            }, 1000);
+        }
+
+        function renderQuestionGrid() {
+            const gridContainer = document.getElementById('q-grid');
+            gridContainer.innerHTML = '';
+            questions.forEach((q, idx) => {
+                const btn = document.createElement('div');
+                btn.className = `grid-item ${idx === currentQuestionIdx ? 'active' : ''}`;
+                btn.id = `grid-item-${idx}`;
+                btn.innerText = idx + 1;
+                btn.onclick = () => loadQuestion(idx);
+                gridContainer.appendChild(btn);
+            });
+        }
+
+        function loadQuestion(idx) {
+            document.getElementById(`grid-item-${currentQuestionIdx}`).classList.remove('active');
+            currentQuestionIdx = idx;
+            document.getElementById(`grid-item-${currentQuestionIdx}`).classList.add('active');
+
+            const q = questions[idx];
+            document.getElementById('topic-badge').innerText = q.topic;
+            document.getElementById('q-text').innerHTML = q.text;
+
+            // Extra visual layout aids for cladogram analysis (Q28 specific cladogram visualization text block)
+            const cladogramArea = document.getElementById('cladogram-area');
+            if (q.id === 28) {
+                cladogramArea.innerHTML = `
+                    <div class="cladogram-block">
+  Raiz
+   ├─── Mamífero
+   └─── Ancestral Comum
+         ├─── Peixe
+         └─── Clado Tetrápode
+               ├─── Anfíbio
+               └─── Clado Amniota
+                     ├─── Réptil
+                     └─── Ave
+                    </div>
+                `;
+            } else {
+                cladogramArea.innerHTML = '';
+            }
+
+            const optionsBox = document.getElementById('options-box');
+            optionsBox.innerHTML = '';
+            
+            const letters = ['A', 'B', 'C', 'D'];
+            q.options.forEach((opt, optIdx) => {
+                const button = document.createElement('button');
+                button.className = 'option-button';
+                if (userAnswers[idx] !== null) button.classList.add('disabled');
+                
+                if (userAnswers[idx] !== null) {
+                    if (optIdx === q.correct) {
+                        button.classList.add('correct-ans');
+                    } else if (userAnswers[idx] === optIdx) {
+                        button.classList.add('wrong-ans');
+                    }
+                } else {
+                    button.onclick = () => handleSelectOption(optIdx);
+                }
+
+                button.innerHTML = `
+                    <div class="option-letter">${letters[optIdx]}</div>
+                    <div>${opt}</div>
+                `;
+                optionsBox.appendChild(button);
+            });
+
+            const expBox = document.getElementById('explanation-box');
+            if (userAnswers[idx] !== null) {
+                document.getElementById('explanation-text').innerHTML = q.explanation;
+                expBox.style.display = 'block';
+            } else {
+                expBox.style.display = 'none';
+            }
+
+            document.getElementById('btn-prev').disabled = idx === 0;
+            document.getElementById('btn-next').innerText = idx === questions.length - 1 ? 'Finalizar e Ver Painel' : 'Próxima ➡️';
+            
+            const answeredCount = userAnswers.filter(a => a !== null).length;
+            document.getElementById('progress-text').innerText = `${answeredCount} / ${questions.length}`;
+        }
+
+        function handleSelectOption(selectedOptIdx) {
+            if (userAnswers[currentQuestionIdx] !== null) return;
+            
+            userAnswers[currentQuestionIdx] = selectedOptIdx;
+            const q = questions[currentQuestionIdx];
+            const gridItem = document.getElementById(`grid-item-${currentQuestionIdx}`);
+
+            if (selectedOptIdx === q.correct) {
+                gridItem.classList.add('correct');
+            } else {
+                gridItem.classList.add('wrong');
+            }
+
+            loadQuestion(currentQuestionIdx);
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIdx < questions.length - 1) {
+                loadQuestion(currentQuestionIdx + 1);
+            } else {
+                showResultsDashboard();
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIdx > 0) {
+                loadQuestion(currentQuestionIdx - 1);
+            }
+        }
+
+        function showResultsDashboard() {
+            clearInterval(timerInterval);
+            
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('sidebar-nav').classList.add('hidden');
+            document.getElementById('timer').classList.add('hidden');
+            document.getElementById('dashboard-screen').style.display = 'block';
+
+            // Reset scores
+            Object.keys(topicMetrics).forEach(k => topicMetrics[k].correct = 0);
+            
+            let totalCorrect = 0;
+            userAnswers.forEach((ans, idx) => {
+                const q = questions[idx];
+                let macroTopic = "";
+                if (idx < 6) macroTopic = "Ecologia Humana e Sustentabilidade";
+                else if (idx < 12) macroTopic = "Teorias Evolutivas";
+                else if (idx < 18) macroTopic = "Especiação e Mecanismos";
+                else if (idx < 24) macroTopic = "Anatomia Comparada e Adaptação";
+                else macroTopic = "Sistemática Filogenética";
+
+                if (ans === q.correct) {
+                    totalCorrect++;
+                    topicMetrics[macroTopic].correct++;
+                }
+            });
+
+            const accuracy = Math.round((totalCorrect / questions.length) * 100);
+            const score = Math.round((totalCorrect / questions.length) * 1000);
+
+            document.getElementById('metric-accuracy').innerText = `${accuracy}%`;
+            document.getElementById('metric-score').innerText = `${score} / 1000`;
+            
+            const mins = String(Math.floor(timeElapsed / 60)).padStart(2, '0');
+            const secs = String(timeElapsed % 60).padStart(2, '0');
+            document.getElementById('metric-time').innerText = `${mins}:${secs}`;
+
+            let statusText = "";
+            if (accuracy < 50) statusText = "Revisão Necessária";
+            else if (accuracy < 80) statusText = "Domínio Sólido";
+            else statusText = "Excelência Evolutiva";
+            document.getElementById('metric-status').innerText = statusText;
+
+            const breakdownContainer = document.getElementById('topic-breakdown-container');
+            breakdownContainer.innerHTML = '';
+            
+            const labels = [];
+            const accuracyData = [];
+
+            Object.keys(topicMetrics).forEach(topic => {
+                const data = topicMetrics[topic];
+                const pct = Math.round((data.correct / data.total) * 100);
+                
+                labels.push(topic);
+                accuracyData.push(pct);
+
+                const row = document.createElement('div');
+                row.className = 'topic-row';
+                row.innerHTML = `
+                    <div class="topic-row-header">
+                        <span>${topic}</span>
+                        <span>${data.correct}/${data.total} (${pct}%)</span>
+                    </div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${pct}%;"></div>
+                    </div>
+                `;
+                breakdownContainer.appendChild(row);
+            });
+
+            // Render Radar Chart with 5 macro vectors
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Desempenho por Área (%)',
+                        data: accuracyData,
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        borderColor: '#10b981',
+                        pointBackgroundColor: '#a7f3d0',
+                        pointBorderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#1e293b' },
+                            grid: { color: '#1e293b' },
+                            pointLabels: { color: '#9ca3af', font: { size: 10, family: 'Inter' } },
+                            ticks: { display: false },
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        window.onload = initQuiz;
+    </script>
+</body>
+</html>
